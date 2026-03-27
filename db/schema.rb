@@ -10,8 +10,26 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 0) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_27_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
+  create_table "payments", force: :cascade do |t|
+    t.decimal "amount", precision: 10, scale: 2, null: false
+    t.datetime "created_at", null: false
+    t.string "error_code"
+    t.string "error_message"
+    t.string "idempotency_key", null: false
+    t.datetime "processed_at"
+    t.string "provider_type", null: false
+    t.integer "retry_count", default: 0
+    t.string "status", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["idempotency_key"], name: "index_payments_on_idempotency_key", unique: true
+    t.index ["provider_type"], name: "index_payments_on_provider_type"
+    t.index ["status", "created_at"], name: "index_payments_on_status_and_created_at"
+    t.index ["status"], name: "index_payments_on_status"
+    t.index ["user_id"], name: "index_payments_on_user_id"
+  end
 end

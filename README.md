@@ -1,95 +1,285 @@
 # Rails Payment Service
 
-A Rails 8 API-only application for handling payment transactions, built with PostgreSQL.
+A **Rails 8 API-only application** for handling payment transactions, built with PostgreSQL
 
-## Prerequisites
+---
 
-- Ruby 4.0.2
-- PostgreSQL 15+
-- Bundler
+## Overview
 
-## Local Setup
+This project implements a **payment processing backend** that handles real-world challenges such as:
 
-### 1. Install Ruby 4.0.2
+* Idempotency (duplicate request prevention)
+* Background job processing
+* Retry mechanisms
+* Failure handling
+* Concurrency issues
 
-**Option A: Using rbenv (Recommended)**
-```bash
-# Install rbenv and ruby-build
-git clone https://github.com/rbenv/rbenv.git ~/.rbenv
-git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build
+---
 
-# Add to ~/.bashrc or ~/.zshrc:
-export PATH="$HOME/.rbenv/bin:$PATH"
-eval "$(rbenv init -)"
+## Objective
 
-# Install Ruby
-rbenv install 4.0.2
-rbenv local 4.0.2
+The system is designed to:
+
+* Accept payment requests via API
+* Process them asynchronously
+* Ensure no duplicate processing
+* Handle failures and retries safely
+
+---
+
+## System Design
+
+### 🔹 High-Level Flow
+
+1. Client sends `POST /payments` request with `Idempotency-Key`
+2. System checks for duplicate requests
+3. If new:
+
+   * Store payment (`status: pending`)
+   * Trigger background job
+4. Background job processes payment:
+
+   * Updates status (`processing → completed/failed`)
+   * Retries on failure
+5. Client can fetch or cancel payment
+
+---
+
+## Architecture
+
+* **Controller Layer** → Handles API requests
+* **Service Layer** → Business logic (clean separation)
+* **Background Jobs** → Async processing using ActiveJob
+* **Database** → Stores payment state & ensures idempotency
+
+---
+
+## Database Design
+
+### Payments Table
+
+| Column          | Purpose              |
+| --------------- | -------------------- |
+| user_id         | User reference       |
+| amount          | Payment amount       |
+| provider_type   | Payment source       |
+| status          | Lifecycle tracking   |
+| idempotency_key | Prevent duplicates   |
+| retry_count     | Retry tracking       |
+| error_code      | Failure code         |
+| error_message   | Failure details      |
+| processed_at    | Completion timestamp |
+
+### Indexes
+
+* `UNIQUE(idempotency_key)` → prevents duplicate processing
+* `status` → faster job queries
+* `user_id` → optimized user queries
+
+---
+
+## Idempotency Handling
+
+* Client sends `Idempotency-Key` in headers
+* System ensures:
+
+  * Same key + same payload → returns existing record
+  * Same key + different payload → returns **409 Conflict**
+
+### Enforcement:
+
+* Database unique constraint
+* Application-level validation
+
+---
+
+## Background Processing
+
+* Uses **ActiveJob**
+* Payment processing is asynchronous
+* Improves scalability and responsiveness
+
+---
+
+## Retry Mechanism
+
+* Handled via **ActiveJob retry**
+* Uses **exponential backoff**
+
+### Logic:
+
+* Retry only for transient failures
+* Controlled using `retry_count`
+* Stops after max retry attempts
+
+---
+
+## Failure Handling
+
+Failures are persisted with:
+
+* `error_code`
+* `error_message`
+
+### Benefits:
+
+* No silent failures
+* Easier debugging
+* Better observability
+
+---
+
+## Concurrency Handling
+
+Handled using:
+
+* **DB Unique Constraint** → prevents duplicate entries
+* **Row-level locking** → prevents race conditions
+* **Idempotency key** → ensures safe retries
+
+---
+
+## Cancellation Handling
+
+* API: `POST /payments/:id/cancel`
+
+### Allowed only when:
+
+* `pending`
+* `processing`
+
+Prevents invalid state transitions.
+
+---
+
+## API Endpoints
+
+### ➤ Create Payment
+
+```http
+POST /payments
+Headers:
+  Idempotency-Key: <unique_key>
 ```
 
-**Option B: Using snapcraft**
-```bash
-snap install ruby --channel=4.0
+#### Responses:
+
+* `202 Accepted` → New request
+* `200 OK` → Duplicate request
+* `409 Conflict` → Payload mismatch
+* `400 Bad Request` → Invalid input
+
+---
+
+### ➤ Get Payment
+
+```http
+GET /payments/:id
 ```
 
-### 2. Start PostgreSQL Database
+---
 
-**Option A: Using Docker Compose (Recommended)**
-```bash
-docker compose up -d
+### ➤ Get User Payments
+
+```http
+GET /payments/user/:user_id
 ```
 
-**Option B: Local PostgreSQL Installation**
-```bash
-# macOS
-brew install postgresql@15
-brew services start postgresql@15
+---
 
-# Ubuntu/Debian
-sudo apt-get install postgresql postgresql-contrib
-sudo systemctl start postgresql
+### ➤ Cancel Payment
+
+```http
+POST /payments/:id/cancel
 ```
 
-Create database user:
-```bash
-createuser -P postgres  # Set password to "password"
-```
+---
 
-### 3. Install Dependencies
+## 🧪 How to Run
+
+### 1. Prerequisites
+
+* Ruby 4.0.2
+* PostgreSQL 15+
+* Bundler
+
+---
+
+### 2. Install Dependencies
+
 ```bash
 bundle install
 ```
 
-### 4. Setup Database
+---
+
+### 3. Setup Database
+
 ```bash
 bundle exec rails db:create
 bundle exec rails db:migrate
 ```
 
-### 5. Start Rails Server
+---
+
+### 4. Start Rails Server
+
 ```bash
 bin/rails server -b 0.0.0.0
 ```
 
-The API will be available at: `http://localhost:3000`
+---
 
-## Database Configuration
+### 5. Start Background Jobs
 
-The app uses PostgreSQL with the following credentials (in development):
-- Username: `postgres`
-- Password: `password`
-- Host: `localhost`
-- Database: `rails_payment_service_development`
-
-See `config/database.yml` for all environment configurations.
-
-## Running Tests
 ```bash
-bundle exec rails test
+bundle exec sidekiq
 ```
 
-## Deployment
+---
 
-This application is configured for deployment with [Kamal](https://kamal-deploy.org).
+### 6. Test API
 
-See `config/deploy.yml` for deployment configuration.
+#### Create Payment
+
+```bash
+curl -X POST http://localhost:3000/payments \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: abc123" \
+  -d '{
+    "payment": {
+      "user_id": 1,
+      "amount": 100,
+      "provider_type": "upi"
+    }
+  }'
+```
+
+---
+
+## Design Decisions
+
+* Used **Service Objects** for clean architecture
+* Used **Idempotency keys** to prevent duplicate payments
+* Used **background jobs** for scalability
+* Used **DB constraints + locking** for concurrency safety
+
+---
+
+## Edge Cases Handled
+
+* Duplicate requests
+* Retry without duplication
+* Downstream failure simulation
+* Concurrent requests
+* Cancellation during processing
+* Slow processing (async jobs)
+
+---
+
+## Future Improvements
+
+* Support multiple payment providers (Stripe, UPI, etc.)
+* Add monitoring & metrics
+* Add request validation layer
+* Add automated test coverage

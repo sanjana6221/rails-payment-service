@@ -13,6 +13,5 @@ class Payment < ApplicationRecord
   validates :idempotency_key, uniqueness: true
 
   scope :by_status, ->(status) { where(status: status) }
-  scope :by_user, ->(user_id) { where(user_id: user_id) }
   scope :recent, -> { order(created_at: :desc) }
 end

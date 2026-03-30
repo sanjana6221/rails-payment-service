@@ -8,11 +8,12 @@ A **Rails 8 API-only application** for handling payment transactions, built with
 
 This project implements a **payment processing backend** that handles real-world challenges such as:
 
-* Idempotency (duplicate request prevention)
-* Background job processing
-* Retry mechanisms
-* Failure handling
-* Concurrency issues
+* Duplicate requests
+* Retry without duplication
+* Downstream failure simulation
+* Concurrent requests
+* Cancellation during processing
+* Slow processing (async jobs)
 
 ---
 
@@ -86,13 +87,6 @@ The system is designed to:
   * Same key + same payload → returns existing record
   * Same key + different payload → returns **409 Conflict**
 
-### Enforcement:
-
-* Database unique constraint
-* Application-level validation
-
----
-
 ## Background Processing
 
 * Uses **ActiveJob**
@@ -120,22 +114,6 @@ Failures are persisted with:
 
 * `error_code`
 * `error_message`
-
-### Benefits:
-
-* No silent failures
-* Easier debugging
-* Better observability
-
----
-
-## Concurrency Handling
-
-Handled using:
-
-* **DB Unique Constraint** → prevents duplicate entries
-* **Row-level locking** → prevents race conditions
-* **Idempotency key** → ensures safe retries
 
 ---
 
@@ -179,14 +157,6 @@ GET /payments/:id
 
 ---
 
-### ➤ Get User Payments
-
-```http
-GET /payments/user/:user_id
-```
-
----
-
 ### ➤ Cancel Payment
 
 ```http
@@ -195,7 +165,7 @@ POST /payments/:id/cancel
 
 ---
 
-## 🧪 How to Run
+## How to Run
 
 ### 1. Prerequisites
 
@@ -254,32 +224,10 @@ curl -X POST http://localhost:3000/payments \
     }
   }'
 ```
-
----
-
-## Design Decisions
-
-* Used **Service Objects** for clean architecture
-* Used **Idempotency keys** to prevent duplicate payments
-* Used **background jobs** for scalability
-* Used **DB constraints + locking** for concurrency safety
-
----
-
-## Edge Cases Handled
-
-* Duplicate requests
-* Retry without duplication
-* Downstream failure simulation
-* Concurrent requests
-* Cancellation during processing
-* Slow processing (async jobs)
-
 ---
 
 ## Future Improvements
 
 * Support multiple payment providers (Stripe, UPI, etc.)
 * Add monitoring & metrics
-* Add request validation layer
 * Add automated test coverage

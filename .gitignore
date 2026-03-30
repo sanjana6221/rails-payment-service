@@ -30,6 +30,10 @@
 
 # Ignore key files for decrypting credentials and more.
 /config/*.key
+/config/credentials.yml.enc
+/config/database.yml
+/config/master.key
+
 
 # Ignore Kamal hook samples
 .kamal/hooks/*.sample

@@ -14,7 +14,7 @@ class PaymentProcessingService < ApplicationService
 
       return unless @payment.pending?
       return if @payment.cancelled?
-      
+
       @payment.update!(status: :processing)
 
       result = simulate_provider

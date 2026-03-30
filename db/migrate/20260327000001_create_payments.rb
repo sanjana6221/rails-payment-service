@@ -1,4 +1,4 @@
-class CreatePayments < ActiveRecord::Migration[8.1]
+class CreatePayments < ActiveRecord::Migration[7.0]
   def change
     create_table :payments do |t|
       t.bigint :user_id, null: false
@@ -18,6 +18,6 @@ class CreatePayments < ActiveRecord::Migration[8.1]
     add_index :payments, :status
     add_index :payments, :provider_type
     add_index :payments, :user_id
-    add_index :payments, [:status, :created_at]
+    add_index :payments, [ :status, :created_at ]
   end
 end

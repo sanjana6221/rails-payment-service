@@ -6,7 +6,7 @@ Rails.application.routes.draw do
   get "up" => "rails/health#show", as: :rails_health_check
 
   # Payment API routes
-  resources :payments, only: [:create, :show] do
+  resources :payments, only: [ :create, :show ] do
     member do
       post :cancel
     end

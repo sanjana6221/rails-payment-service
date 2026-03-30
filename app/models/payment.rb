@@ -1,10 +1,10 @@
 class Payment < ApplicationRecord
-  enum status: { 
-    pending: "pending", 
-    processing: "processing", 
-    completed: "completed", 
-    failed: "failed", 
-    cancelled: "cancelled" 
+  enum status: {
+    pending: "pending",
+    processing: "processing",
+    completed: "completed",
+    failed: "failed",
+    cancelled: "cancelled"
   }
 
   validates :user_id, :amount, :provider_type, :idempotency_key, presence: true

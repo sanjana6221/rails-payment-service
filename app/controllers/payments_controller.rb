@@ -1,6 +1,6 @@
   class PaymentsController < ApplicationController
     include LoggerHelper
-    before_action :find_payment, only: [:show, :cancel]
+    before_action :find_payment, only: [ :show, :cancel ]
 
     # POST /payments
     def create
@@ -13,7 +13,7 @@
 
       render json: {
         payment: result[:payment],
-        duplicate: result[:duplicate],
+        duplicate: result[:duplicate]
       }, status: result[:status] || :internal_server_error
 
     rescue ActionController::ParameterMissing => e

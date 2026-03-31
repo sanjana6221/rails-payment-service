@@ -18,17 +18,16 @@ jobs:
         with:
           bundler-cache: true
 
-      - name: Scan for common Rails security vulnerabilities
+      - name: Scan for common Rails security vulnerabilities using static analysis
         run: bin/brakeman --no-pager
       
-      - name: Scan for known vulnerabilities in gems
+      - name: Scan for known security vulnerabilities in gems used
         run: bin/bundler-audit
       
   lint:
     runs-on: ubuntu-latest
     env:
       RUBOCOP_CACHE_ROOT: tmp/rubocop
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -48,7 +47,7 @@ jobs:
           restore-keys: |
             rubocop-${{ runner.os }}-${{ env.DEPENDENCIES_HASH }}-
 
-      - name: Lint code
+      - name: Lint code for consistent style
         run: bin/rubocop -f github
 
   test:
@@ -60,9 +59,9 @@ jobs:
         ports:
           - 5432:5432
         env:
-          POSTGRES_USER: {{ env.POSTGRES_USER }}
-          POSTGRES_PASSWORD: {{ env.POSTGRES_PASSWORD }}
-          POSTGRES_DB: {{ env.POSTGRES_DB }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.TEST_DB_NAME }}
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -88,14 +87,8 @@ jobs:
             sleep 2
           done
 
-      - name: Setup DB
-        env:
-          RAILS_ENV: test
-        run: |
-          bin/rails db:create
-          bin/rails db:schema:load
-
       - name: Run tests
         env:
           RAILS_ENV: test
-        run: bin/rails test
+          # RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
+        run: bin/rails db:test:prepare test

@@ -1,6 +1,6 @@
 # Rails Payment Service
 
-A **Rails 8 API-only application** for handling payment transactions, built with PostgreSQL
+A **Rails 7 API-only application** for handling payment transactions, built with PostgreSQL
 
 ---
 

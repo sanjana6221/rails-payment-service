@@ -60,7 +60,7 @@ jobs:
           - 5432:5432
         env:
           POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
           POSTGRES_DB: ${{ secrets.TEST_DB_NAME }}
         options: >-
           --health-cmd pg_isready
@@ -73,22 +73,15 @@ jobs:
         run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libvips postgresql-client
 
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
           bundler-cache: true
 
-      - name: Wait for Postgres
-        run: |
-          until pg_isready -h localhost -p 5432; do
-            echo "Waiting for postgres..."
-            sleep 2
-          done
-
       - name: Run tests
         env:
           RAILS_ENV: test
-          # RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
+          DATABASE_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.DB_PASSWORD }}@localhost:5432/${{ secrets.TEST_DB_NAME }}
         run: bin/rails db:test:prepare test
